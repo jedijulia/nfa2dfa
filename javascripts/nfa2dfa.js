@@ -27,3 +27,16 @@ NFAConverter.expandStringTransitions = function(nfa) {
   return nfa;
 }
 
+NFAConverter.EClosure = function(nfa, state) {
+  var eStates = [state];
+  for (var transition in state.transitions) {
+    if (transition === "~") {
+      for (var i = 0; i < state.transitions[transition].length; i++) {
+        var moreEStates = NFAConverter.EClosure(nfa, state.transitions[transition][i]);
+        eStates = eStates.concat(moreEStates);
+      }
+    } 
+  }
+  return eStates;
+}
+
