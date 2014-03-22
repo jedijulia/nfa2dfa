@@ -1,6 +1,10 @@
-var regex = "a*(ab+b(ba)*(a+ba*b(b*+a*)*)*)*";
+var regex = "a";
 var nfa = RegexParser.parse(regex);
+nfa.states["q1"].transition(nfa.states["q0"], "aba");
+nfa.states["q1"].transition(nfa.states["q1"], "aba");
+nfa.states["q1"].transition(nfa.states["q2"], "aba");
 
+nfa = NFAConverter.convert(nfa);
 for (var state in nfa.states) {
   console.group(state);
   for (var transition in nfa.states[state].transitions) {
