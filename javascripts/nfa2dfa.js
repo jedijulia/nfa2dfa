@@ -27,16 +27,20 @@ NFAConverter.expandStringTransitions = function(nfa) {
   return nfa;
 }
 
-NFAConverter.EClosure = function(nfa, state) {
-  var eStates = [state];
-  for (var transition in state.transitions) {
-    if (transition === "~") {
-      for (var i = 0; i < state.transitions[transition].length; i++) {
-        var moreEStates = NFAConverter.EClosure(nfa, state.transitions[transition][i]);
-        eStates = eStates.concat(moreEStates);
+NFAConverter.EClosure = function(nfa, state, eStates) {
+  eStates.push(state.label);
+  if ('~' in state.transitions) {
+    var moreEStates = [];
+    for (var i = 0; i < state.transitions['~'].length; i++) {
+      if (eStates.indexOf(state.transitions['~'][i].label) == -1) {
+        moreEStates = NFAConverter.EClosure(nfa, state.transitions['~'][i], eStates);
+      } 
+      for (var j = 0; j < moreEStates.length; j++) {
+        if (eStates.indexOf(moreEStates[j]) == -1) {
+          eStates.push(moreEStates[j]);
+        }
       }
     } 
   }
   return eStates;
 }
-
