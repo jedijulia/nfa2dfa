@@ -1,9 +1,9 @@
 //var regex = "a+b";
-var regex = "(a+b*)*";
+var regex = "abba";
 var nfa = RegexParser.parse(regex);
-console.log(NFAConverter.EClosure(nfa, nfa.states["q0"], []));
+console.log(NFAConverter.eClosure(nfa, nfa.states["q0"], []));
+console.log(NFAConverter.convert(nfa));
 
-nfa = NFAConverter.convert(nfa);
 for (var state in nfa.states) {
   console.group(state);
   for (var transition in nfa.states[state].transitions) {
