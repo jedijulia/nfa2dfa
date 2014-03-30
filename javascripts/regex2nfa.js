@@ -1,48 +1,53 @@
 function RegexParser() {}
 RegexParser.parse = function(regex) {
-  var nfa = new NFA('ab');
-  var emptyContext = nfa.startState();
-  var context = emptyContext.finalize();
   var tokens = RegexParser.tokenize(regex);
+  var alphabet = 'ab';
+  var concatStack = [];
+  var unionStack = [];
 
   for (var i = 0; i < tokens.length; i++) {
     var token = tokens[i];
     if (token.type == 'symbol') {
-      if (nfa.alphabetContains(token.content)) {
-        emptyContext = nfa.addState();
+      if (alphabet.indexOf(token.content) >= 0) {
+        var nfa = new NFA(alphabet);
         var state = nfa.addState();
-        context.unfinalize().transition(emptyContext, '~');
-        emptyContext.transition(state, token.content);
-        context = state.finalize();
+        nfa.getStartState().transition(state.finalize(), token.content);
+        concatStack.push(nfa);
       } else if (token.content == '*') {
-        context.transition(emptyContext, '~');
-        emptyContext.transition(context, '~');
+        var nfa = new NFA(alphabet);
+        var popped = concatStack.pop();
+        var finalStates = popped.getFinalStates();
+        var states = nfa.concatenate(popped);
+        nfa.getStartState().finalize().transition(states[popped.getStartState().label], '~');
+        for (var j = 0; j < finalStates.length; j++) {
+          states[finalStates[j].label].transition(nfa.getStartState(), '~');
+        }
+        concatStack.push(nfa);
       } else if (token.content == '+') {
-        emptyContext = nfa.startState();
-        context = emptyContext;
+        var nfa = RegexParser.combine(concatStack);
+        unionStack.push(nfa);
+        concatStack = [];
       }
     } else {
-      var nested = RegexParser.parse(token.content);
-      var newStates = [];
-      for (var j = 0; j < nested.stateCount; j++) {
-        newStates.push(nfa.addState());
-      }
-      var finalState = nfa.addState();
-      for (var state in nested.states) {
-        var index = parseInt(state.substring(1));
-        for (var transition in nested.states[state].transitions) {
-          for (var j = 0; j < nested.states[state].transitions[transition].length; j++) {
-            var destinationIndex = parseInt(nested.states[state].transitions[transition][j].label.substring(1));
-            newStates[index].transition(newStates[destinationIndex], transition);
-          }
-        }
-        if (nested.states[state].final) {
-          newStates[index].unfinalize().transition(finalState, '~');
-        }
-      }
-      context.unfinalize().transition(newStates[0], '~');
-      emptyContext = newStates[0];
-      context = finalState.finalize();
+      var nfa = RegexParser.parse(token.content);
+      concatStack.push(nfa);
+    }
+  }
+
+  var nfa = new NFA(alphabet);
+  if (concatStack.length) {
+    nfa = RegexParser.combine(concatStack);
+  } else {
+    nfa.getStartState().finalize();
+  }
+
+  if (unionStack.length) {
+    unionStack.push(nfa);
+    nfa = new NFA(alphabet);
+    while (unionStack.length) {
+      var shifted = unionStack.shift();
+      var newStates = nfa.absorb(shifted);
+      nfa.getStartState().transition(newStates[shifted.getStartState().label], '~');
     }
   }
   return nfa;
@@ -53,21 +58,31 @@ RegexParser.tokenize = function(regex) {
   var stack = [];
   for (var i = 0; i < regex.length; i++) {
     var symbol = regex.charAt(i);
-    if (symbol === '(') {
+    if (symbol == '(') {
       stack.push(i);
     } else if (symbol == ')') {
-      var openPar = stack.pop();
+      var open = stack.pop();
       if (!stack.length) {
-        var insideParens = regex.substring(openPar + 1, i);
-        tokens.push({type: 'regex', content: insideParens});
+        tokens.push({ type: 'regex', content: regex.substring(open + 1, i) });
       }
     } else {
       if (!stack.length) {
-        tokens.push({type: 'symbol', content: symbol});
+        tokens.push({ type: 'symbol', content: symbol });
       }
     }
   }
   return tokens;
+}
+
+RegexParser.combine = function(nfas) {
+  if (nfas.length) {
+    var nfa = nfas.shift();
+    while (nfas.length) {
+      nfa.concatenate(nfas.shift());
+    }
+    return nfa;
+  }
+  return null;
 }
 
 
@@ -75,40 +90,73 @@ RegexParser.tokenize = function(regex) {
 
 
 function NFA(alphabet) {
-  this.alphabet = alphabet.split('');
+  this.alphabet = alphabet;
   this.states = {};
-  this.stateCount = 0;
-  this.addState();
+  this.statesCount = 0;
+  this.startState = this.addState();
 }
 
-NFA.prototype.startState = function() {
-  return this.states['q0'];
+NFA.prototype.addState = function(label) {
+  label = label || this.generateStateLabel();
+  this.states[label] = new State(label);
+  this.statesCount++;
+  return this.states[label];
 }
 
-NFA.prototype.finalStates = function() {
+NFA.prototype.getState = function(label) {
+  return this.states[label];
+}
+
+NFA.prototype.getStartState = function() {
+  return this.startState;
+}
+
+NFA.prototype.setStartState = function(state) {
+  this.startState = state;
+}
+
+NFA.prototype.getFinalStates = function() {
   var finalStates = [];
-  for (var state in this.states) {
-    if (this.states[state].final) {
-      finalStates.push(this.states[state]);
+  for (var label in this.states) {
+    if (this.states[label].final) {
+      finalStates.push(this.states[label]);
     }
   }
   return finalStates;
 }
 
-NFA.prototype.addState = function(label) {
-  label = label || this.generateStateLabel();
-  var state = new State(label);
-  this.states[label] = state;
-  this.stateCount++;
-  return state;
-}
-
 NFA.prototype.alphabetContains = function(symbol) {
-  return this.alphabet.join('').indexOf(symbol) > -1;
+  return this.alphabet.indexOf(symbol) >= 0;
 }
 
 NFA.prototype.generateStateLabel = function() {
-  return 'q' + this.stateCount;
+  return 'q' + this.statesCount;
+}
+
+NFA.prototype.concatenate = function(nfa) {
+  var finalStates = this.getFinalStates();
+  var newStates = this.absorb(nfa);
+  for (var i = 0; i < finalStates.length; i++) {
+    finalStates[i].unfinalize().transition(newStates[nfa.getStartState().label], '~');
+  }
+  return newStates;
+}
+
+NFA.prototype.absorb = function(nfa) {
+  var newStates = {};
+  for (var label in nfa.states) {
+    newStates[label] = this.addState();
+  }
+  for (var label in nfa.states) {
+    var state = nfa.states[label];
+    newStates[label].final = state.final;
+    for (var symbol in state.transitions) {
+      for (var i = 0; i < state.transitions[symbol].length; i++) {
+        newStates[label].transition(newStates[state.transitions[symbol][i].label], symbol);
+      }
+    }
+  }
+  return newStates;
 }
 
 
