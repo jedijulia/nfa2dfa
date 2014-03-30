@@ -48,7 +48,7 @@ NFAConverter.eClosure = function(nfa, state, eStates) {
 NFAConverter.convert = function(nfa) {
   var currentState = nfa.states['q0'];
   var newStates = [];
-  var eclosures = NFAConverter.eClosure(nfa, currentState, []);
+  var eclosures = NFAConverter.eClosure(nfa, currentState, []).sort();
   var finished = false;
   var alphabet = ['a', 'b'];
   var finalDFAstates = [];
@@ -81,23 +81,47 @@ NFAConverter.convert = function(nfa) {
         }
       }
       if (newStates.indexOf(temp) == -1) {
-        newStates.push(temp);
+        temp.sort();
+
+        var equal = false;
+        for (var n = 0; n < newStates.length; n++) {
+          if (isEqual(newStates[n], temp)) {      
+            equal = true;
+            break;
+          }
+        }
+
+        if (!equal && temp.length != 0) {
+          newStates.push(temp);
+        }
       }
     }
 
     if (finalDFAstates.indexOf(newStates[0]) == -1) {
       finalDFAstates.push(newStates.shift());
     }
-    console.info(finalDFAstates);
-    console.warn(newStates);
 
-    finished = true;
+    console.warn(finalDFAstates);
+    console.info(newStates);
+
+    if (newStates.length == 0) {
+      finished = true;
+    }
   }
 
 }
 
+function isEqual(array1, array2) {
+  if (array1.length == array2.length) {
+    for (var i = 0; i < array1.length; i++) {
+      if (array1[i] != array2[i]) return false;
+    }
 
+    return true;
+  }
 
+  return false;
+} 
 
 
 
