@@ -47,31 +47,39 @@ NFAConverter.eClosure = function(nfa, state, eStates) {
 
 NFAConverter.convert = function(nfa) {
   var currentState = nfa.states['q0'];
-  var newStates = [];
-  var eclosures = NFAConverter.eClosure(nfa, currentState, []).sort();
-  var finished = false;
-  var alphabet = ['a', 'b'];
+  var possibleNewStates = [];
+  var nfaFinalStates = nfa.getFinalStates();
   var finalDFAstates = [];
+  var alphabet = ['a', 'b'];
+  var finished = false;
+  var id = 1;
+  var eclosures = NFAConverter.eClosure(nfa, currentState, []).sort();
+  var deadState = {  
+    label: "deadState", 
+    transitions : {a : "deadState", b : "deadState"}, 
+    eclosure:[]
+  }
 
-  newStates.push(eclosures);
+  possibleNewStates.push({label: "p0", transitions : {}, eclosure: eclosures});
 
-  var count = 0;
   while (!finished) {
     for (var i = 0; i < alphabet.length; i++) {
-      console.log(alphabet[i]);
       var leadsTo = [];
 
-      for (var j = 0; j < newStates[0].length; j++) {
-        if (alphabet[i] in nfa.states[newStates[0][j]].transitions) {
-          var trans = nfa.states[newStates[0][j]].transitions[alphabet[i]];
+      for (var j = 0; j < possibleNewStates[0].eclosure.length; j++) {
+        if (alphabet[i] in nfa.states[possibleNewStates[0].eclosure[j]].transitions) {
+          var trans = nfa.states[possibleNewStates[0].eclosure[j]].transitions[alphabet[i]];
           for (var l = 0; l < trans.length; l++) {
             if (leadsTo.indexOf(trans[l]) == -1) {
               leadsTo.push(trans[l]);
             }
           }
-        } else {
-          //diri ibutang ang empty state
         }
+      }
+
+      if (leadsTo.length == 0) {
+        possibleNewStates[0].transitions[alphabet[i]] = deadState.label;
+        continue;
       }
 
       var temp = [];
@@ -85,42 +93,40 @@ NFAConverter.convert = function(nfa) {
       }
 
       temp.sort();
-      //if (finalDFAstates.indexOf(temp) == -1) { 
-      if (!(contains(finalDFAstates, temp))) {
-        //if (newStates.indexOf(temp) == -1) {
-        if (!(contains(newStates, temp))) {
-          var equal = false;
-          for (var n = 0; n < newStates.length; n++) {
-            if (isEqual(newStates[n], temp)) {      
-              equal = true;
-              break;
-            }
-          }
+      toBeAdded = {label : "p" + id, transitions: {}, eclosure : temp};
+      toBeAdded.transitions[alphabet[i]] = "";
+      id++;
 
-          if (!equal && temp.length != 0) {
-            newStates.push(temp);
-          }
+      if (contains(finalDFAstates, toBeAdded)) {
+        possibleNewStates[0].transitions[alphabet[i]] = getLabel(finalDFAstates, toBeAdded);
+        id--;
+      } else {
+        if (contains(possibleNewStates, toBeAdded)) {
+          possibleNewStates[0].transitions[alphabet[i]] = getLabel(possibleNewStates, toBeAdded);
+          id--;
+        } else {
+          possibleNewStates[0].transitions[alphabet[i]] = toBeAdded.label;
+          possibleNewStates.push(toBeAdded);
         }
       }
     }
 
-    //if (finalDFAstates.indexOf(newStates[0]) == -1) {
-    //if (!(contains(finalDFAstates, newStates[0]))) {
-      finalDFAstates.push(newStates.shift());
-    //}
+    finalDFAstates.push(possibleNewStates.shift());
 
-    console.warn(finalDFAstates);
-    console.info(newStates);
-
-   //count += 1;
-   //console.log("omg we just finished this!" + count);
-   //if (count == 4) {
-   if (newStates.length == 0) {
+    if (possibleNewStates.length == 0) {
       finished = true;
-   }
+    }
   }
 
+  finalDFAstates = setFinalStates(finalDFAstates, nfaFinalStates);
+
+  return finalDFAstates;
 }
+
+
+
+
+
 
 function isEqual(array1, array2) {
   if (array1.length == array2.length) {
@@ -134,12 +140,31 @@ function isEqual(array1, array2) {
 
 function contains(source, toCheck) {
   for (var i = 0; i < source.length; i++) {
-    if (isEqual(source[i], toCheck)) {
+    if (isEqual(source[i].eclosure, toCheck.eclosure)) {
       return true;
     } 
   } 
   return false;
 }
 
+function getLabel(source, toGet) {
+  for (var i = 0; i < source.length; i++) {
+    if (isEqual(source[i].eclosure, toGet.eclosure)) {
+      return source[i].label;
+    }
+  }
+}
 
+function setFinalStates(finalDFAstates, nfaFinalStates) {
+  for (var i = 0; i < finalDFAstates.length; i++) {
+    for (var j = 0; j < nfaFinalStates.length; j++) {
+      for (var k = 0; k < finalDFAstates[i].eclosure.length; k++) {
+        if (finalDFAstates[i].eclosure[k] == nfaFinalStates[j].label) {
+          finalDFAstates[i].final = true;
+        }
+      }
+    }
+  }
 
+  return finalDFAstates;
+}
