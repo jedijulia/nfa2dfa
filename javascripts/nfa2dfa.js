@@ -55,6 +55,7 @@ NFAConverter.convert = function(nfa) {
 
   newStates.push(eclosures);
 
+  var count = 0;
   while (!finished) {
     for (var i = 0; i < alphabet.length; i++) {
       console.log(alphabet[i]);
@@ -68,6 +69,8 @@ NFAConverter.convert = function(nfa) {
               leadsTo.push(trans[l]);
             }
           }
+        } else {
+          //diri ibutang ang empty state
         }
       }
 
@@ -80,33 +83,41 @@ NFAConverter.convert = function(nfa) {
           }
         }
       }
-      if (newStates.indexOf(temp) == -1) {
-        temp.sort();
 
-        var equal = false;
-        for (var n = 0; n < newStates.length; n++) {
-          if (isEqual(newStates[n], temp)) {      
-            equal = true;
-            break;
+      temp.sort();
+      //if (finalDFAstates.indexOf(temp) == -1) { 
+      if (!(contains(finalDFAstates, temp))) {
+        //if (newStates.indexOf(temp) == -1) {
+        if (!(contains(newStates, temp))) {
+          var equal = false;
+          for (var n = 0; n < newStates.length; n++) {
+            if (isEqual(newStates[n], temp)) {      
+              equal = true;
+              break;
+            }
           }
-        }
 
-        if (!equal && temp.length != 0) {
-          newStates.push(temp);
+          if (!equal && temp.length != 0) {
+            newStates.push(temp);
+          }
         }
       }
     }
 
-    if (finalDFAstates.indexOf(newStates[0]) == -1) {
+    //if (finalDFAstates.indexOf(newStates[0]) == -1) {
+    //if (!(contains(finalDFAstates, newStates[0]))) {
       finalDFAstates.push(newStates.shift());
-    }
+    //}
 
     console.warn(finalDFAstates);
     console.info(newStates);
 
-    if (newStates.length == 0) {
+   //count += 1;
+   //console.log("omg we just finished this!" + count);
+   //if (count == 4) {
+   if (newStates.length == 0) {
       finished = true;
-    }
+   }
   }
 
 }
@@ -116,13 +127,19 @@ function isEqual(array1, array2) {
     for (var i = 0; i < array1.length; i++) {
       if (array1[i] != array2[i]) return false;
     }
-
     return true;
   }
-
   return false;
 } 
 
+function contains(source, toCheck) {
+  for (var i = 0; i < source.length; i++) {
+    if (isEqual(source[i], toCheck)) {
+      return true;
+    } 
+  } 
+  return false;
+}
 
 
 

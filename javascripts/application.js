@@ -1,7 +1,7 @@
 //var regex = "a+b";
-var regex = "abba";
+var regex = "ab*ab"; 
 var nfa = RegexParser.parse(regex);
-console.log(NFAConverter.eClosure(nfa, nfa.states["q0"], []));
+//console.log(NFAConverter.eClosure(nfa, nfa.states["q0"], []));
 console.log(NFAConverter.convert(nfa));
 
 for (var state in nfa.states) {
