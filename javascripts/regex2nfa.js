@@ -1,7 +1,13 @@
 function RegexParser() {}
-RegexParser.parse = function(regex) {
+RegexParser.parse = function(regex, alphabet) {
+  alphabet = alphabet || 'ab';
+  if (!RegexParser.validate(regex, alphabet)) {
+    throw new ParsingError('The RegEx you provided is invalid.');
+    return false;
+  }
+
+  regex = RegexParser.clean(regex);
   var tokens = RegexParser.tokenize(regex);
-  var alphabet = 'ab';
   var concatStack = [];
   var unionStack = [];
 
@@ -14,14 +20,15 @@ RegexParser.parse = function(regex) {
         nfa.getStartState().transition(state.finalize(), token.content);
         concatStack.push(nfa);
       } else if (token.content == '*') {
-        var nfa = new NFA(alphabet);
+        var nfa = new NFA('ab');
         var popped = concatStack.pop();
-        var finalStates = popped.getFinalStates();
-        var states = nfa.concatenate(popped);
-        nfa.getStartState().finalize().transition(states[popped.getStartState().label], '~');
+        var newStates = nfa.absorb(popped);
+        nfa.getStartState().transition(newStates[popped.getStartState().label], '~');
+        var finalStates = nfa.getFinalStates();
         for (var j = 0; j < finalStates.length; j++) {
-          states[finalStates[j].label].transition(nfa.getStartState(), '~');
+          finalStates[j].transition(nfa.getStartState(), '~');
         }
+        nfa.getStartState().finalize();
         concatStack.push(nfa);
       } else if (token.content == '+') {
         var nfa = RegexParser.combine(concatStack);
@@ -85,6 +92,64 @@ RegexParser.combine = function(nfas) {
   return null;
 }
 
+RegexParser.validate = function(regex, alphabet) {
+  var parenthesisStack = [];
+  var characterStack = [];
+
+  for (var i = 0; i < regex.length; i++) {
+    var character = regex.charAt(i);
+    characterStack.push(character);
+    
+    if (character == "+") {
+      if (i - 1 < 0 || i + 1 >= regex.length) {
+        return false;
+      } else {
+        var prevChar = regex.charAt(i-1);
+        var nextChar = regex.charAt(i+1);
+
+        if ((["a", "b"].indexOf(nextChar) == -1 && nextChar != "*") || nextChar == ")" || nextChar == "+" || 
+            (["a", "b"].indexOf(prevChar) == -1 && prevChar != "*") || prevChar == "(" || prevChar == "+"
+            ) {
+          return false;
+        }
+      }
+    } else if (character == "*") {
+      if (characterStack[characterStack.length-1] == "+") {
+        return false;
+      }
+    } else if (character == "(") {
+      parenthesisStack.push(character);
+    } else if (character == ")") {
+      if (parenthesisStack.length == 0) {
+        return false;
+      } 
+      parenthesisStack.pop();
+    } else if (["a", "b"].indexOf(character) == -1){
+      return false;
+    }
+  }
+
+  if (parenthesisStack.length) {
+    return false;
+  }
+
+  return true;
+}
+
+RegexParser.clean = function(regex) {
+  var finalRegex = "";
+
+  for (var i = 0; i < regex.length; i++) {
+    var character = regex.charAt(i);
+
+    if (!(character == "*" && (finalRegex.charAt(finalRegex.length - 1) == "*" || finalRegex == ""))) {
+      finalRegex += character;
+    } 
+  }
+
+  return finalRegex;
+}
+
 
 
 
@@ -95,6 +160,7 @@ function NFA(alphabet) {
   this.statesCount = 0;
   this.startState = this.addState();
 }
+NFA.prototype = new CustomEvent();
 
 NFA.prototype.addState = function(label) {
   label = label || this.generateStateLabel();
@@ -159,6 +225,32 @@ NFA.prototype.absorb = function(nfa) {
   return newStates;
 }
 
+NFA.prototype.accepts = function(input, state) {
+  state = state || this.getStartState();
+  this.dispatchEvent('yield', { input: input, state: state, type: 'destination' });
+  if (input.length) {
+    var symbol = input.charAt(0);
+    if (symbol in state.transitions) {
+      for (var i = 0; i < state.transitions[symbol].length; i++) {
+        this.dispatchEvent('yield', { input: input, state: state, type: 'source' });
+        if (this.accepts(input.substring(1), state.transitions[symbol][i])) {
+          return true;
+        }
+      }
+    }
+    if ('~' in state.transitions) {
+      for (var i = 0; i < state.transitions['~'].length; i++) {
+        this.dispatchEvent('yield', { input: input, state: state, type: 'source' });
+        if (this.accepts(input, state.transitions['~'][i])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  return state.final;
+}
+
 
 
 
@@ -186,3 +278,49 @@ State.prototype.unfinalize = function() {
   this.final = false;
   return this;
 }
+
+
+
+
+
+
+function CustomEvent() {
+  this.events = {};
+}
+
+CustomEvent.prototype.addEventListener = function(name, callback) {
+  if (!(name in this.events)) {
+    this.events[name] = [];
+  }
+  this.events[name].push(callback);
+}
+
+CustomEvent.prototype.removeEventListener = function(name, callback) {
+  if (name in this.events) {
+    for (var i = 0; i < this.events[name].length; i++) {
+      if (this.events[name][i] === callback) {
+        this.events[name].splice(i, 1);
+      }
+    }
+  }
+}
+
+CustomEvent.prototype.dispatchEvent = function(name, data) {
+  if (name in this.events) {
+    data = data || {};
+    data['target'] = this;
+    for (var i = 0; i < this.events[name].length; i++) {
+      this.events[name][i](data);
+    }
+  }
+}
+
+
+
+
+
+function ParsingError(message) {
+  this.name = 'ParsingError';
+  this.message = message;
+}
+ParsingError.prototype = Error.prototype;

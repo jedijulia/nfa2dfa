@@ -1,0 +1,75 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+#nfa {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.labels {
+  position: absolute;
+}
+
+.labels p,
+.labels span {
+  font: normal 10px "Consolas";
+  color: #333333;
+  position: absolute;
+  -webkit-transform: translate(-55%, -55%);
+}
+
+.labels p.current {
+  color: #ffffff;
+}
+
+svg {
+  display: block;
+}
+
+circle {
+  stroke: #333333;
+  stroke-width: 2px;
+  fill: #ffffff;
+}
+
+circle.final {
+  stroke-width: 4px;
+}
+
+circle.control {
+  stroke: #aa0000;
+  stroke-width: 2px;
+  fill: #aa0000;
+}
+
+circle.current {
+  stroke: #014924;
+  fill: #016D36;
+}
+
+path {
+  stroke: #333333;
+  stroke-width: 1px;
+  fill: none;
+}
+
+path.control {
+  stroke: #aa0000;
+}
+
+path.indicator {
+  stroke-width: 2px;
+}
+
+path.current {
+  stroke: #014924;
+  stroke-width: 2px;
+}

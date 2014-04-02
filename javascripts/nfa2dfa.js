@@ -48,12 +48,12 @@ NFAConverter.eClosure = function(nfa, state, eStates) {
 NFAConverter.convert = function(nfa) {
   var dfa = new NFA('ab');
   var currentState = nfa.states['q0'];
+  var alphabet = ['a', 'b'];
+  var id = 1;
   var possibleNewStates = [];
   var nfaFinalStates = nfa.getFinalStates();
   var finalDFAstates = [];
-  var alphabet = ['a', 'b'];
   var finished = false;
-  var id = 1;
   var eclosures = NFAConverter.eClosure(nfa, currentState, []).sort();
   var deadState = {  
     label: "deadState", 
@@ -121,24 +121,50 @@ NFAConverter.convert = function(nfa) {
 
   finalDFAstates = setFinalStates(finalDFAstates, nfaFinalStates);
   finalDFAstates.push(deadState);
+  dfa.states = {};
+  dfa.statesCount = 0;
+  dfa.startState = null;
+  var nStates = {};
+  for (var i = 0; i < finalDFAstates.length; i++) {
+    nStates[finalDFAstates[i].label] = dfa.addState();
+  }
+
+  console.info(nStates);
 
   for (var i = 0; i < finalDFAstates.length; i++) {
-    var addedState = dfa.addState(finalDFAstates[i].label);
-    if (finalDFAstates[i].final) {
-      addedState.finalize();
+    var s = finalDFAstates[i];
+    var state = nStates[s.label];
+    state.final = s.final || false;
+    for (var symbol in s.transitions) {
+      console.log(state);
+      console.log(nStates[s.transitions[symbol]]);
+      state.transition(nStates[s.transitions[symbol]], symbol);
     }
   }
+  dfa.setStartState(dfa.getState('q0'));
 
-  dfa.setStartState(dfa.states["q0"]);
+  console.log(dfa);
 
-  for (state in dfa.states) {
-    var finalDFAstatesState = getStateByLabel(finalDFAstates, dfa.states[state].label);
-    for (stateKey in finalDFAstatesState.transitions) {
-      dfa.states[state].transition(finalDFAstatesState.transitions[stateKey], stateKey);
-    }
-  }
+  // for (var i = 0; i < finalDFAstates.length; i++) {
+  //   var addedState = dfa.addState(finalDFAstates[i].label);
+  //   console.info(addedState);
+  //   if (finalDFAstates[i].final) {
+  //     addedState.finalize();
+  //   }
+  // }
 
-  console.log(finalDFAstates);
+  // console.warn(dfa.statesCount);
+
+  // dfa.setStartState(dfa.states["q0"]);
+
+  // for (state in dfa.states) {
+  //   var finalDFAstatesState = getStateByLabel(finalDFAstates, dfa.states[state].label);
+  //   for (stateKey in finalDFAstatesState.transitions) {
+  //     dfa.states[state].transition(finalDFAstatesState.transitions[stateKey], stateKey);
+  //   }
+  // }
+
+  // console.log(finalDFAstates);
   return dfa;
 }
 
