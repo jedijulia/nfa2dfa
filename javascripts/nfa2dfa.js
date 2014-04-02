@@ -47,13 +47,12 @@ NFAConverter.eClosure = function(nfa, state, eStates) {
 
 NFAConverter.convert = function(nfa) {
   var dfa = new NFA('ab');
-  var currentState = nfa.states['q0'];
   var alphabet = ['a', 'b'];
   var id = 1;
   var possibleNewStates = [];
-  var nfaFinalStates = nfa.getFinalStates();
+  var finalNFAstates = nfa.getFinalStates();
   var finalDFAstates = [];
-  var finished = false;
+  var currentState = nfa.states['q0'];
   var eclosures = NFAConverter.eClosure(nfa, currentState, []).sort();
   var deadState = {  
     label: "deadState", 
@@ -63,50 +62,51 @@ NFAConverter.convert = function(nfa) {
 
   possibleNewStates.push({label: "q0", transitions : {}, eclosure: eclosures});
 
+  var finished = false;
   while (!finished) {
     for (var i = 0; i < alphabet.length; i++) {
       var leadsTo = [];
-
+      var currSymbol = alphabet[i];
       for (var j = 0; j < possibleNewStates[0].eclosure.length; j++) {
-        if (alphabet[i] in nfa.states[possibleNewStates[0].eclosure[j]].transitions) {
-          var trans = nfa.states[possibleNewStates[0].eclosure[j]].transitions[alphabet[i]];
-          for (var l = 0; l < trans.length; l++) {
-            if (leadsTo.indexOf(trans[l]) == -1) {
-              leadsTo.push(trans[l]);
+        if (currSymbol in nfa.states[possibleNewStates[0].eclosure[j]].transitions) {
+          var trans = nfa.states[possibleNewStates[0].eclosure[j]].transitions[currSymbol];
+          for (var k = 0; k < trans.length; k++) {
+            if (leadsTo.indexOf(trans[k]) == -1) {
+              leadsTo.push(trans[k]);
             }
           }
         }
       }
 
       if (leadsTo.length == 0) {
-        possibleNewStates[0].transitions[alphabet[i]] = deadState.label;
+        possibleNewStates[0].transitions[currSymbol] = deadState.label;
         continue;
       }
 
-      var temp = [];
-      for (var k = 0; k < leadsTo.length; k++) {
-        var x = NFAConverter.eClosure(nfa, leadsTo[k], []);
-        for (var m = 0; m < x.length; m++) {
-          if (temp.indexOf(x[m]) == -1) {
-            temp.push(x[m]);
+      var eClosuresUnion = [];
+      for (var l = 0; l < leadsTo.length; l++) {
+        var eClosure = NFAConverter.eClosure(nfa, leadsTo[l], []);
+        for (var m = 0; m < eClosure.length; m++) {
+          if (eClosuresUnion.indexOf(eClosure[m]) == -1) {
+            eClosuresUnion.push(eClosure[m]);
           }
         }
       }
 
-      temp.sort();
-      toBeAdded = {label : "q" + id, transitions: {}, eclosure : temp};
-      toBeAdded.transitions[alphabet[i]] = "";
+      eClosuresUnion.sort();
+      toBeAdded = {label : "q" + id, transitions: {}, eclosure : eClosuresUnion};
+      toBeAdded.transitions[currSymbol] = "";
       id++;
 
       if (contains(finalDFAstates, toBeAdded)) {
-        possibleNewStates[0].transitions[alphabet[i]] = getLabel(finalDFAstates, toBeAdded);
+        possibleNewStates[0].transitions[currSymbol] = getLabel(finalDFAstates, toBeAdded);
         id--;
       } else {
         if (contains(possibleNewStates, toBeAdded)) {
-          possibleNewStates[0].transitions[alphabet[i]] = getLabel(possibleNewStates, toBeAdded);
+          possibleNewStates[0].transitions[currSymbol] = getLabel(possibleNewStates, toBeAdded);
           id--;
         } else {
-          possibleNewStates[0].transitions[alphabet[i]] = toBeAdded.label;
+          possibleNewStates[0].transitions[currSymbol] = toBeAdded.label;
           possibleNewStates.push(toBeAdded);
         }
       }
@@ -119,8 +119,12 @@ NFAConverter.convert = function(nfa) {
     }
   }
 
-  finalDFAstates = setFinalStates(finalDFAstates, nfaFinalStates);
+  finalDFAstates = setFinalStates(finalDFAstates, finalNFAstates);
   finalDFAstates.push(deadState);
+
+  console.log("omg final DFA states!");
+  console.log(finalDFAstates);
+
   dfa.states = {};
   dfa.statesCount = 0;
   dfa.startState = null;
@@ -136,38 +140,13 @@ NFAConverter.convert = function(nfa) {
     var state = nStates[s.label];
     state.final = s.final || false;
     for (var symbol in s.transitions) {
-      console.log(state);
-      console.log(nStates[s.transitions[symbol]]);
       state.transition(nStates[s.transitions[symbol]], symbol);
     }
   }
   dfa.setStartState(dfa.getState('q0'));
-
-  console.log(dfa);
-
-  // for (var i = 0; i < finalDFAstates.length; i++) {
-  //   var addedState = dfa.addState(finalDFAstates[i].label);
-  //   console.info(addedState);
-  //   if (finalDFAstates[i].final) {
-  //     addedState.finalize();
-  //   }
-  // }
-
-  // console.warn(dfa.statesCount);
-
-  // dfa.setStartState(dfa.states["q0"]);
-
-  // for (state in dfa.states) {
-  //   var finalDFAstatesState = getStateByLabel(finalDFAstates, dfa.states[state].label);
-  //   for (stateKey in finalDFAstatesState.transitions) {
-  //     dfa.states[state].transition(finalDFAstatesState.transitions[stateKey], stateKey);
-  //   }
-  // }
-
-  // console.log(finalDFAstates);
+  console.warn(dfa);
   return dfa;
 }
-
 
 
 
@@ -208,11 +187,11 @@ function getStateByLabel(finalDFAstates, label) {
   }
 }
 
-function setFinalStates(finalDFAstates, nfaFinalStates) {
+function setFinalStates(finalDFAstates, finalNFAstates) {
   for (var i = 0; i < finalDFAstates.length; i++) {
-    for (var j = 0; j < nfaFinalStates.length; j++) {
+    for (var j = 0; j < finalNFAstates.length; j++) {
       for (var k = 0; k < finalDFAstates[i].eclosure.length; k++) {
-        if (finalDFAstates[i].eclosure[k] == nfaFinalStates[j].label) {
+        if (finalDFAstates[i].eclosure[k] == finalNFAstates[j].label) {
           finalDFAstates[i].final = true;
         }
       }
