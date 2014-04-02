@@ -46,6 +46,7 @@ NFAConverter.eClosure = function(nfa, state, eStates) {
 }
 
 NFAConverter.convert = function(nfa) {
+  var dfa = new NFA('ab');
   var currentState = nfa.states['q0'];
   var possibleNewStates = [];
   var nfaFinalStates = nfa.getFinalStates();
@@ -60,7 +61,7 @@ NFAConverter.convert = function(nfa) {
     eclosure:[]
   }
 
-  possibleNewStates.push({label: "p0", transitions : {}, eclosure: eclosures});
+  possibleNewStates.push({label: "q0", transitions : {}, eclosure: eclosures});
 
   while (!finished) {
     for (var i = 0; i < alphabet.length; i++) {
@@ -93,7 +94,7 @@ NFAConverter.convert = function(nfa) {
       }
 
       temp.sort();
-      toBeAdded = {label : "p" + id, transitions: {}, eclosure : temp};
+      toBeAdded = {label : "q" + id, transitions: {}, eclosure : temp};
       toBeAdded.transitions[alphabet[i]] = "";
       id++;
 
@@ -119,8 +120,26 @@ NFAConverter.convert = function(nfa) {
   }
 
   finalDFAstates = setFinalStates(finalDFAstates, nfaFinalStates);
+  finalDFAstates.push(deadState);
 
-  return finalDFAstates;
+  for (var i = 0; i < finalDFAstates.length; i++) {
+    var addedState = dfa.addState(finalDFAstates[i].label);
+    if (finalDFAstates[i].final) {
+      addedState.finalize();
+    }
+  }
+
+  dfa.setStartState(dfa.states["q0"]);
+
+  for (state in dfa.states) {
+    var finalDFAstatesState = getStateByLabel(finalDFAstates, dfa.states[state].label);
+    for (stateKey in finalDFAstatesState.transitions) {
+      dfa.states[state].transition(finalDFAstatesState.transitions[stateKey], stateKey);
+    }
+  }
+
+  console.log(finalDFAstates);
+  return dfa;
 }
 
 
@@ -151,6 +170,14 @@ function getLabel(source, toGet) {
   for (var i = 0; i < source.length; i++) {
     if (isEqual(source[i].eclosure, toGet.eclosure)) {
       return source[i].label;
+    }
+  }
+}
+
+function getStateByLabel(finalDFAstates, label) {
+  for (var i = 0; i < finalDFAstates.length; i++) {
+    if (label == finalDFAstates[i].label) {
+      return finalDFAstates[i];
     }
   }
 }
