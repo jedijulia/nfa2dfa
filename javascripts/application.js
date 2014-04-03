@@ -7,6 +7,7 @@ var nfa = RegexParser.parse(regex);
 //console.log(nfa)
 
 dfa = NFAConverter.convert(nfa);
+console.log(dfa);
 NFAVisualizer.visualize('#nfa', dfa);
 
 var events = [];
