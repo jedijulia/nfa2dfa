@@ -59,6 +59,7 @@ NFAConverter.convert = function(nfa) {
     transitions : {a : "deadState", b : "deadState"}, 
     eclosure:[]
   }
+  var dead = false;
 
   possibleNewStates.push({label: "q0", transitions : {}, eclosure: eclosures});
 
@@ -77,8 +78,8 @@ NFAConverter.convert = function(nfa) {
           }
         }
       }
-
       if (leadsTo.length == 0) {
+        dead = true;
         possibleNewStates[0].transitions[currSymbol] = deadState.label;
         continue;
       }
@@ -120,10 +121,9 @@ NFAConverter.convert = function(nfa) {
   }
 
   finalDFAstates = setFinalStates(finalDFAstates, finalNFAstates);
-  finalDFAstates.push(deadState);
-
-  console.log("omg final DFA states!");
-  console.log(finalDFAstates);
+  if (dead) {
+    finalDFAstates.push(deadState);
+  }
 
   dfa.states = {};
   dfa.statesCount = 0;

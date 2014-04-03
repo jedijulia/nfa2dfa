@@ -49,10 +49,27 @@ NFAVisualizer.visualize = function(selector, nfa) {
         var n = s.x < d.x ? 'r' : 'l';
         var c = NFAVisualizer.getCurveControlPoints(distance, f, n);
 
-        if (sl == dl) {
+        if (document.querySelector('.transitions path[source="' + sl + '"][destination="' + dl + '"]')) {
+          var transition = document.querySelector('.transitions path[source="' + sl + '"][destination="' + dl + '"]');
+          var label = document.querySelector('.labels span[source="' + sl + '"][destination="' + dl + '"]');
+          var symbols = transition.getAttribute('symbol').split(',');
+          var found = false;
+          for (var j = 0; j < symbols.length && !found; found = symbols[j] == symbol, j++);
+          if (!found) {
+            symbols.push(symbol);
+            symbols = symbols.join(',');
+            transition.setAttribute('symbol', symbols);
+            label.setAttribute('symbol', symbols);
+            label.textContent = symbols;
+          }
+        } else if (sl == dl) {
           c = { x1: -45, y1: -55, x2: 45, y2: -55 };
-          var transition = SVG.create('path', { d: NFAVisualizer.generatePathDefinition(s, c, d), source: sl, destination: dl, symbol: symbol });
+          var transition = document.querySelector('.transitions path[source="' + sl + '"][destination="' + dl + '"]');
+          transition = SVG.create('path', { d: NFAVisualizer.generatePathDefinition(s, c, d), source: sl, destination: dl, symbol: symbol });
           var label = NFAVisualizer.getTransitionLabel(s, c, symbol);
+          label.setAttribute('source', sl);
+          label.setAttribute('destination', dl);
+          label.setAttribute('symbol', symbol);
           var control = { x: s.x + c.x1, y: s.y + c.y1 };
           var angle = Math.angle(d, control) - 5;
           var origin = Math.coordinates(d, 12, angle);
@@ -62,15 +79,19 @@ NFAVisualizer.visualize = function(selector, nfa) {
           transitionsGroup.appendChild(transition);
           labelsGroup.appendChild(label);
           arrowHeadsGroup.appendChild(arrowHead);
-        } else if (document.querySelector('path[source="' + sl + '"][destination="' + dl + '"]')
-          || document.querySelector('path[source="' + dl + '"][destination="' + sl + '"]')
+        } else if (document.querySelector('.transitions path[source="' + sl + '"][destination="' + dl + '"]')
+          || document.querySelector('.transitions path[source="' + dl + '"][destination="' + sl + '"]')
           || distance > interval * 1.5) {
-          while (document.querySelector('path[d="' + NFAVisualizer.generatePathDefinition(s, c, d) + '"]') && f > 0) {
-            c = NFAVisualizer.getCurveControlPoints(distance, f = f - 2, n);
+          while (document.querySelector('.transitions path[d="' + NFAVisualizer.generatePathDefinition(s, c, d) + '"]') && f > 0) {
+            f -= 2;
+            c = NFAVisualizer.getCurveControlPoints(distance, f, n);
           }
           var points = { sx: s.x, sy: s.y, p1x: s.x + c.x1, p1y: s.y + c.y1, p2x: s.x + c.x2, p2y: s.y + c.y2, dx: d.x, dy: d.y };
           var transition = SVG.create('path', { d: NFAVisualizer.generatePathDefinition(s, c, d), source: sl, destination: dl, symbol: symbol });
           var label = NFAVisualizer.getTransitionLabel(s, c, symbol);
+          label.setAttribute('source', sl);
+          label.setAttribute('destination', dl);
+          label.setAttribute('symbol', symbol);
           var control = { x: s.x + c.x2, y: s.y + c.y2 };
           if (interval < 150 && distance < interval * 1.5) {
             var controlDistance = Math.distance({ x: s.x + c.x1, y: s.y + c.y1 }, { x: s.x + c.x2, y: s.y + c.y2 });
@@ -87,10 +108,12 @@ NFAVisualizer.visualize = function(selector, nfa) {
           transitionsGroup.appendChild(transition);
           labelsGroup.appendChild(label);
           arrowHeadsGroup.appendChild(arrowHead);
-          // NFAVisualizer.showCurveControlPoints(svg, points);
         } else {
           var transition = SVG.create('path', { d: 'M' + s.x + ',' + s.y + ' L' + d.x + ',' + d.y, source: sl, destination: dl, symbol: symbol });
           var label = NFAVisualizer.getTransitionLabel(s, { x1: 0, y1: 0, x2: distance, y2: 0 }, symbol);
+          label.setAttribute('source', sl);
+          label.setAttribute('destination', dl);
+          label.setAttribute('symbol', symbol);
           var angle = Math.angle(d, s);
           var origin = Math.coordinates(d, 12, angle);
           var arrowHead = NFAVisualizer.getArrowHead(origin, angle);
