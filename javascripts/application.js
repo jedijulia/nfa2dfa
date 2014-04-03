@@ -1,11 +1,13 @@
-//var regex = "b*ab*a(a+b)*"; 
+var regex = "b*ab*a(a+b)*"; 
 //var regex = "b*ab*ab*"; 
 //var regex = "b*(ab*ab*)*"; 
-var regex = "a(a+b)*"; 
+//var regex = "a(a+b)*"; 
 var nfa = RegexParser.parse(regex);
+//NFAVisualizer.visualize('#nfa', nfa);
 //console.log(nfa)
 
 dfa = NFAConverter.convert(nfa);
+console.log(dfa);
 NFAVisualizer.visualize('#nfa', dfa);
 
 var events = [];
