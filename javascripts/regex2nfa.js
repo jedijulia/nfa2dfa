@@ -36,7 +36,7 @@ RegexParser.parse = function(regex, alphabet) {
         concatStack = [];
       }
     } else {
-      var nfa = RegexParser.parse(token.content);
+      var nfa = RegexParser.parse(token.content, alphabet);
       concatStack.push(nfa);
     }
   }
@@ -95,58 +95,46 @@ RegexParser.combine = function(nfas) {
 RegexParser.validate = function(regex, alphabet) {
   var parenthesisStack = [];
   var characterStack = [];
-
   for (var i = 0; i < regex.length; i++) {
     var character = regex.charAt(i);
     characterStack.push(character);
-    
-    if (character == "+") {
-      if (i - 1 < 0 || i + 1 >= regex.length) {
+    if (character == '+') {
+      if (!i || i == regex.length - 1) {
         return false;
       } else {
-        var prevChar = regex.charAt(i-1);
-        var nextChar = regex.charAt(i+1);
-
-        if ((["a", "b"].indexOf(nextChar) == -1 && nextChar != "*") || nextChar == ")" || nextChar == "+" || 
-            (["a", "b"].indexOf(prevChar) == -1 && prevChar != "*") || prevChar == "(" || prevChar == "+"
-            ) {
+        var prevChar = regex.charAt(i - 1);
+        var nextChar = regex.charAt(i + 1);
+        if ((alphabet.indexOf(nextChar) < 0 && nextChar != '*') || nextChar == ')' || nextChar == '+'
+            || (alphabet.indexOf(prevChar) < 0 && prevChar != '*') || prevChar == '(' || prevChar == '+') {
           return false;
         }
       }
-    } else if (character == "*") {
-      if (characterStack[characterStack.length-1] == "+") {
+    } else if (character == '*') {
+      if (characterStack[characterStack.length - 1] == '+') {
         return false;
       }
-    } else if (character == "(") {
+    } else if (character == '(') {
       parenthesisStack.push(character);
-    } else if (character == ")") {
-      if (parenthesisStack.length == 0) {
+    } else if (character == ')') {
+      if (!parenthesisStack.length) {
         return false;
       } 
       parenthesisStack.pop();
-    } else if (["a", "b"].indexOf(character) == -1){
+    } else if (alphabet.indexOf(character) < 0) {
       return false;
     }
   }
-
-  if (parenthesisStack.length) {
-    return false;
-  }
-
-  return true;
+  return !parenthesisStack.length;
 }
 
 RegexParser.clean = function(regex) {
-  var finalRegex = "";
-
+  var finalRegex = '';
   for (var i = 0; i < regex.length; i++) {
     var character = regex.charAt(i);
-
-    if (!(character == "*" && (finalRegex.charAt(finalRegex.length - 1) == "*" || finalRegex == ""))) {
+    if (!(character == '*' && (finalRegex.charAt(finalRegex.length - 1) == '*' || finalRegex == ''))) {
       finalRegex += character;
     } 
   }
-
   return finalRegex;
 }
 
@@ -171,6 +159,16 @@ NFA.prototype.addState = function(label) {
 
 NFA.prototype.getState = function(label) {
   return this.states[label];
+}
+
+NFA.prototype.removeState = function(label) {
+  if (label in this.states) {
+    var state = this.states[label];
+    delete this.states[label];
+    this.statesCount--;
+    return state;
+  }
+  return null;
 }
 
 NFA.prototype.getStartState = function() {
