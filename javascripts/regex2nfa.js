@@ -268,16 +268,20 @@ NFA.prototype.absorb = function(nfa) {
 NFA.prototype.accepts = function(input, state, path) {
     state = state || this.getStartState();
     path = path || [];
-    path.push(state)
+    path.push(state);
     this.dispatchEvent('yield', { input: input, state: state });
     this.dispatchEvent('yield-path', { path: path });
     if (input.length) {
         for (var symbol in state.transitions) {
-            var actualSymbol = symbol == '~' ? '' : symbol;
-            if (input.indexOf(actualSymbol) == 0) {
-                for (var i = 0; i < state.transitions[symbol].length; i++) {
-                    if (this.accepts(input.substring(actualSymbol.length), state.transitions[symbol][i], path)) {
-                        return true;
+            if (state.transitions.hasOwnProperty(symbol)) {
+                var actualSymbol = symbol === '~' ? '' : symbol;
+                if (input.indexOf(actualSymbol) === 0) {
+                    for (var i = 0; i < state.transitions[symbol].length;
+                    i++) {
+                        if (this.accepts(input.substring(actualSymbol.length),
+                        state.transitions[symbol][i], path)) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -289,74 +293,68 @@ NFA.prototype.accepts = function(input, state, path) {
 
 
 
-
-
 function State(label) {
-  this.label = label;
-  this.transitions = {};
-  this.final = false;
+    this.label = label;
+    this.transitions = {};
+    this.final = false;
 }
 
 State.prototype.transition = function(state, symbol) {
-  if (!(symbol in this.transitions)) {
-    this.transitions[symbol] = [];
-  }
-  this.transitions[symbol].push(state);
-  return this;
-}
+    if (!(symbol in this.transitions)) {
+        this.transitions[symbol] = [];
+    }
+    this.transitions[symbol].push(state);
+    return this;
+};
 
 State.prototype.finalize = function() {
-  this.final = true;
-  return this;
-}
+    this.final = true;
+    return this;
+};
 
 State.prototype.unfinalize = function() {
-  this.final = false;
-  return this;
-}
-
-
-
+    this.final = false;
+    return this;
+};
 
 
 
 function CustomEvent() {
-  this.events = {};
+    this.events = {};
 }
 
 CustomEvent.prototype.addEventListener = function(name, callback) {
-  if (!(name in this.events)) {
-    this.events[name] = [];
-  }
-  this.events[name].push(callback);
-}
+    if (!(name in this.events)) {
+        this.events[name] = [];
+    }
+    this.events[name].push(callback);
+};
 
 CustomEvent.prototype.removeEventListener = function(name, callback) {
-  if (name in this.events) {
-    for (var i = 0; i < this.events[name].length; i++) {
-      if (this.events[name][i] === callback) {
-        this.events[name].splice(i, 1);
-      }
+    if (name in this.events) {
+        for (var i = 0; i < this.events[name].length; i++) {
+            if (this.events[name][i] === callback) {
+                this.events[name].splice(i, 1);
+            }
+        }
     }
-  }
-}
+};
 
 CustomEvent.prototype.dispatchEvent = function(name, data) {
-  if (name in this.events) {
-    data = data || {};
-    data['target'] = this;
-    for (var i = 0; i < this.events[name].length; i++) {
-      this.events[name][i](data);
+    if (name in this.events) {
+        data = data || {};
+        data.target = this;
+        for (var i = 0; i < this.events[name].length; i++) {
+            this.events[name][i](data);
+        }
     }
-  }
-}
-
-
+};
 
 
 
 function ParsingError(message) {
-  this.name = 'ParsingError';
-  this.message = message;
+    this.name = 'ParsingError';
+    this.message = message;
 }
+
 ParsingError.prototype = Error.prototype;
